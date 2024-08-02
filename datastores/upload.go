@@ -8,6 +8,9 @@ import (
 	"io"
 	"os"
 	"path"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/prometheus/client_golang/prometheus"
@@ -103,4 +106,45 @@ func Upload(ctx rcontext.RequestContext, ds config.DatastoreConfig, data io.Read
 	}
 
 	return objectName, nil
+}
+
+func ShouldRedirectUpload(ds config.DatastoreConfig) bool {
+	if ds.Type != "s3" {
+		return false
+	}
+
+	redirectUploads, _ := strconv.ParseBool(ds.Options["redirectUploads"])
+	return redirectUploads
+}
+
+func GetS3UploadUrl(ctx rcontext.RequestContext, ds config.DatastoreConfig) (string, error) {
+	s3c, err := getS3(ds)
+	if err != nil {
+		return "", err
+	}
+
+	objectName, err := ids.NewUniqueId()
+	if err != nil {
+		return "", err
+	}
+
+	// Suffix the ID so file paths are correctly bucketed
+	objectName = fmt.Sprintf("%sidv2fmt", objectName)
+
+	if s3c.prefixLength > 0 {
+		objectName = objectName[:s3c.prefixLength] + "/" + objectName[s3c.prefixLength:]
+	}
+
+	expires := time.Duration(ctx.Config.Uploads.MaxAgeSeconds*1000) * time.Millisecond
+	presignedUrl, err := s3c.client.PresignedPutObject(ctx.Context, s3c.bucket, objectName, expires)
+
+	if err != nil {
+		return "", err
+	}
+
+	if s3c.redirectDomain != "" {
+		presignedUrl.Host = strings.Replace(presignedUrl.Host, s3c.client.EndpointURL().Hostname(), s3c.redirectDomain, 1)
+	}
+
+	return presignedUrl.String(), nil
 }

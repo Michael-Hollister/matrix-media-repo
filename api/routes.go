@@ -32,6 +32,7 @@ func buildRoutes() http.Handler {
 
 	// Standard (spec) features
 	register([]string{"PUT"}, PrefixMedia, "upload/:server/:mediaId", mxV3, router, makeRoute(_routers.RequireAccessToken(r0.UploadMediaAsync), "upload_async", counter))
+	register([]string{"POST"}, PrefixMedia, "upload/:server/:mediaId/complete", msc3870, router, makeRoute(_routers.RequireAccessToken(r0.UploadMediaAsyncComplete), "upload_async_complete", counter))
 	register([]string{"POST"}, PrefixMedia, "upload", mxSpecV3Transition, router, makeRoute(_routers.RequireAccessToken(r0.UploadMediaSync), "upload", counter))
 	downloadRoute := makeRoute(_routers.OptionalAccessToken(r0.DownloadMediaUser), "download", counter)
 	register([]string{"GET", "HEAD"}, PrefixMedia, "download/:server/:mediaId/:filename", mxSpecV3Transition, router, downloadRoute)
@@ -140,6 +141,7 @@ type matrixVersions []string
 var (
 	//mxAllSpec            matrixVersions = []string{"r0", "v1", "v3", "unstable", "unstable/io.t2bot.media" /* and MSC routes */}
 	mxUnstable           matrixVersions = []string{"unstable", "unstable/io.t2bot.media"}
+	msc3870              matrixVersions = []string{"unstable/com.beeper.msc3870"}
 	msc4034              matrixVersions = []string{"unstable/org.matrix.msc4034"}
 	mxSpecV3Transition   matrixVersions = []string{"r0", "v1", "v3"}
 	mxSpecV3TransitionCS matrixVersions = []string{"r0", "v3"}
